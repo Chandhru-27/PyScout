@@ -53,7 +53,7 @@ def reminder_logic(state):
     if shutdown_event.is_set():
         return
 
-    reminder_threshold = 45 * 60  # seconds before reminder
+    reminder_threshold = 45 * 60  # minutes before reminder
     idle_threshold = 60  # idle threshold in seconds
     break_merge_gap = 15  # seconds between breaks to merge
 
@@ -77,7 +77,7 @@ def reminder_logic(state):
                 is_sleeping = (state.active_window.lower() in ("unknown", "unknow"))
                 is_user_idle = (state.idle_time >= idle_threshold)
 
-                valid_break = (is_sleeping or is_user_idle)
+                valid_break = (is_sleeping or is_user_idle) 
 
                 if gap_seconds > idle_threshold:
                     if state.break_start_time is not None:
@@ -89,9 +89,6 @@ def reminder_logic(state):
                 if valid_break:
                     if state.break_start_time is None:
                         state.break_start_time = now
-                        logger.info(
-                            f"Break Started. Reason: {'Sleep' if is_sleeping else 'Idle'}"
-                        )
 
                 elif state.break_start_time is not None:
                     break_end_time = now

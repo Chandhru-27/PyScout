@@ -183,7 +183,6 @@ class Utility:
                             if "timed out" in str(e):
                                 continue 
                             else:
-                                logger.debug(f"[WMI] Event error: {e}")
                                 break 
 
                         except Exception as e:
