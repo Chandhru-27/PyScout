@@ -1,0 +1,37 @@
+import sqlite3
+
+CREATE_TABLE_USER_STATS = """
+    CREATE TABLE IF NOT EXISTS GENERAL_USAGE (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT UNIQUE,
+    screen_time INTEGER DEFAULT 0,
+    break_time INTEGER DEFAULT 0
+);
+"""
+
+CREATE_TABLE_APPLICATION_USAGE = """
+    CREATE TABLE IF NOT EXISTS APP_USAGE (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    app_name TEXT,
+    date TEXT,
+    usage_duration INTEGER DEFAULT 0,
+    user_stat_id INTEGER,
+    FOREIGN KEY(user_stat_id) REFERENCES GENERAL_USAGE(id) ON DELETE CASCADE,
+    UNIQUE(app_name, date)
+    );
+"""
+
+CREATE_TABLE_BLOCKED_APPS = """
+    CREATE TABLE IF NOT EXISTS blocked_apps (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        app_name TEXT UNIQUE
+    );
+"""
+
+CREATE_TABLE_BLOCKED_URLS = """
+    -- blocked_urls table
+    CREATE TABLE IF NOT EXISTS blocked_urls (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        url TEXT UNIQUE
+    );
+"""
