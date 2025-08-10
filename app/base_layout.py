@@ -45,6 +45,7 @@ class PyScout(ctk.CTk):
         )
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.title(" PyScout")
+        ctk.set_appearance_mode("dark")
         self.minsize(900, 700)
         self.bind("<Configure>", self.on_window_resize)        
         self.configure(fg_color="#181f2a")
@@ -67,6 +68,12 @@ class PyScout(ctk.CTk):
         self.sidebar_frame = ctk.CTkFrame(self, width=220, corner_radius=20, fg_color="#232b3b")
         self.sidebar_frame.pack(side="left", fill="y", padx=0, pady=0)
         self.sidebar_frame.pack_propagate(False)
+    
+        # ==== Logo at the Bottom ====
+        self.logo_source = Image.open(Utility.resource_path("assets/logo.png"))  # store PIL image
+        self.logo_ctk_img = ctk.CTkImage(self.logo_source, size=(100, 100))
+        self.logo_label = ctk.CTkLabel(self.sidebar_frame, image=self.logo_ctk_img, text="")
+        self.logo_label.pack(side="bottom", pady=20)
 
         # ==== Navigation Buttons with Modern Colors ===== #
         self.nav_buttons = {}
@@ -553,6 +560,11 @@ class PyScout(ctk.CTk):
                     img = ctk.CTkImage(src, size=(rules["nav_icon"], rules["nav_icon"]))
                     self._nav_ctk_images[name] = img
                     btn.configure(image=img)
+                # Resize logo with breakpoints
+            logo_size = rules["nav_icon"] * 3  # adjust multiplier if needed
+            self.logo_ctk_img = ctk.CTkImage(self.logo_source, size=(logo_size, logo_size))
+            self.logo_label.configure(image=self.logo_ctk_img)
+
         except Exception:
             pass
 
