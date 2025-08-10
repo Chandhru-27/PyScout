@@ -11,7 +11,7 @@ def notify():
         title="PyScout - Reminder ⚠️",
         msg="You've been active for over 45 mins. Break for 5 mins.",
         icon=Utility.resource_path("assets/icon.ico"),
-        duration=30
+        duration='short'
     )
     toast.set_audio(audio.Reminder, loop=False)
     toast.add_actions(label="OK", launch="")

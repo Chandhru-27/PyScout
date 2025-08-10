@@ -14,8 +14,6 @@ import time
 import sys
 import os
 
-
-
 shutdown_event = threading.Event()
 tray_icon = None
 HOST_PATH = r"C:\Windows\System32\drivers\etc\hosts"
@@ -48,10 +46,7 @@ class PyScout(ctk.CTk):
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.title(" PyScout")
         self.minsize(900, 700)
-        self.bind("<Configure>", self.on_window_resize)
-        ctk.set_appearance_mode("dark")
-        ctk.set_default_color_theme("dark-blue")
-        
+        self.bind("<Configure>", self.on_window_resize)        
         self.configure(fg_color="#181f2a")
         
         try:

@@ -6,24 +6,22 @@ import sqlite3
 import time
 import os
 
+appdata_path = os.getenv('APPDATA')
+app_dir = os.path.join(appdata_path, 'PyScout' , 'userdata')
+os.makedirs(app_dir, exist_ok=True)
+db_path = os.path.join(app_dir, 'User_db.sqlite3')
 
-ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-DB_PATH = os.path.join(ROOT_DIR , "User_db.sqlite3")
 TIMEOUT = 10          
 MAX_RETRIES = 5       
 RETRY_DELAY = 0.2     
 
 def ensure_db_exists():
     """Create the database file if it doesn't exist."""
-    db_dir = os.path.dirname(DB_PATH)
-    if not os.path.exists(db_dir):
-        os.makedirs(db_dir, exist_ok=True)
-    
-    if not os.path.exists(DB_PATH):
-        logger.debug(f"Creating database file at {DB_PATH}")
-        conn = sqlite3.connect(DB_PATH)
+    if not os.path.exists(db_path):
+        logger.debug(f"Creating database file at {db_path}")
+        conn = sqlite3.connect(db_path, timeout=TIMEOUT, check_same_thread=False)
         conn.close()
-    
+
 class Database:
     """Class handles database CRUD logic and thread safety by WAL mode protection."""
     _wal_set = False 
@@ -81,7 +79,7 @@ class Database:
         """Set WAL mode with retry to avoid lock issues."""
         for attempt in range(MAX_RETRIES):
             try:
-                conn = sqlite3.connect(DB_PATH, timeout=TIMEOUT, check_same_thread=False)
+                conn = sqlite3.connect(db_path, timeout=TIMEOUT, check_same_thread=False)
                 conn.execute("PRAGMA foreign_keys = ON;")
                 conn.execute("PRAGMA journal_mode = WAL;")
                 conn.close()
@@ -97,7 +95,7 @@ class Database:
     @contextmanager
     def get_connection(self):
         """Fresh connection per operation (thread-safe)."""
-        conn = sqlite3.connect(DB_PATH, timeout=TIMEOUT, check_same_thread=False)
+        conn = sqlite3.connect(db_path, timeout=TIMEOUT, check_same_thread=False)
         conn.execute("PRAGMA foreign_keys = ON;")
         try:
             yield conn, conn.cursor()

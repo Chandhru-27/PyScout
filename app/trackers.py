@@ -52,7 +52,7 @@ def reminder_logic(state: UserActivityState):
     """Compute break detection over time, handling idle/sleep gaps and merging short active periods."""
     if not shutdown_event.is_set():
         reminder_threshold = 45 * 60 
-        idle_threshold = 60  
+        idle_threshold = 60
         break_merge_gap = 15  
 
         def main_logic(gap_seconds=0):
@@ -122,4 +122,4 @@ def reminder_logic(state: UserActivityState):
             except Exception:
                 logger.exception("Crash in reminder_logic:")
 
-        Utility.run_precise_timer(1, main_logic)
+        Utility.run_precise_timer(2, main_logic)
