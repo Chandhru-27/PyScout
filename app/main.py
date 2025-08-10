@@ -1,4 +1,4 @@
-from base_layout import TimeTrackerApp
+from base_layout import PyScout
 from userstate import UserActivityState
 from utilities import Utility
 from app_logger import logger
@@ -93,7 +93,7 @@ def main():
     """Main application entry point."""
     try:
         
-        logger.info("Starting PyTracker...")
+        logger.info("Starting PyScout...")
         
         run_with_admin_privileges()
         
@@ -113,11 +113,11 @@ def main():
             sys.exit(1)
          
         logger.info("Starting user interface...")
-        app = TimeTrackerApp(state=state)
+        app = PyScout(state=state)
         app.tracker_thread = tracker_thread
         app.reminder_thread = reminder_thread
         
-        app.title("PyTracker")
+        app.title("PyScout")
         app.minsize(900,700)
         img_path = Utility.resource_path("assets/icon.ico")
         app.iconbitmap(default=img_path)

@@ -21,9 +21,9 @@ tray_icon = None
 HOST_PATH = r"C:\Windows\System32\drivers\etc\hosts"
 db = Database()
 
-class TimeTrackerApp(ctk.CTk):
+class PyScout(ctk.CTk):
     """
-    This class is the main window and controller for the PyTracker application.
+    This class is the main window and controller for the PyScout application.
     It holds all UI components, navigation logic, user state, and event handling.
     Features include:
     - Sidebar navigation (Home, Restricted, History)
@@ -46,7 +46,7 @@ class TimeTrackerApp(ctk.CTk):
             "Warning: Make sure to close all the browsers to block an url. Enter a domain only (e.g., xyz.com or www.xyz.com)."
         )
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
-        self.title("PyTracker")
+        self.title(" PyScout")
         self.minsize(900, 700)
         self.bind("<Configure>", self.on_window_resize)
         ctk.set_appearance_mode("dark")
@@ -289,7 +289,7 @@ class TimeTrackerApp(ctk.CTk):
             item("Exit", _on_exit)
         )
 
-        tray_icon = pystray.Icon("PyTracker", icon_image, "PyTracker", menu)
+        tray_icon = pystray.Icon("PyScout", icon_image, "PyScout", menu)
         threading.Thread(target=tray_icon.run, daemon=True).start()
 
     def on_closing(self):

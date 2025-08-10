@@ -1,15 +1,17 @@
 from customtkinter.windows.widgets.scaling import scaling_tracker
 from winotify import Notification, audio
+from utilities import Utility
 import customtkinter as ctk
 import tkinter as tk
 
 def notify():
     """Shows a native Windows toast reminder notification."""
     toast = Notification(
-        app_id="PyTracker",
-        title="PyTracker - Reminder ⚠️",
-        msg="You've been active for 45 mins. Break for 5 mins.",
-        icon=r"C:\Dev\PyTracker\frontend_ui\logo.png"
+        app_id="PyScout",
+        title="PyScout - Reminder ⚠️",
+        msg="You've been active for over 45 mins. Break for 5 mins.",
+        icon=Utility.resource_path("assets/icon.ico"),
+        duration=30
     )
     toast.set_audio(audio.Reminder, loop=False)
     toast.add_actions(label="OK", launch="")
@@ -18,7 +20,7 @@ def notify():
 def customnotify():
     """Display an in-app modal reminder when system notifications are unavailable."""
     root = tk.Tk()
-    root.title("Reminder - PyTracker")
+    root.title("Reminder - PyScout")
     root.configure(bg="#181f2a")  
     root.resizable(False, False)
 
@@ -147,7 +149,7 @@ def show_reset_warning(callback_on_proceed):
 
 def customnotify():
     root = ctk.CTkToplevel()
-    root.title("Reminder - PyTracker")
+    root.title("Reminder - PyScout")
     root.geometry("500x180")
     root.configure(fg_color="#181f2a")
     root.resizable(False, False)
