@@ -1,6 +1,7 @@
-# PyTracker
+# PyScout
 
-PyTracker is a modern desktop productivity tool for Windows that helps you monitor and manage your screen time, app usage, and break habits. It features a beautiful customtkinter UI, real-time analytics, distraction blocking, and a local SQLite database for history and stats.
+PyScout is an intelligent Windows application that quietly watches over your digital habits, helping you reclaim control of your screen time and boost productivity. Like a trusted scout, it observes, reports, and guides you toward healthier computing habits.
+It features a beautiful **CustomTkinter** UI, real-time analytics, distraction blocking, and a local SQLite database for history and stats.
 
 ## Features
 
@@ -30,20 +31,30 @@ PyTracker is a modern desktop productivity tool for Windows that helps you monit
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/Chandhru-27/PyTracker.git
-   cd PyTracker
+   git clone https://github.com/Chandhru-27/PyScout.git
+   cd PyScout
    ```
 
-2. **Install dependencies:**
+2. **Set up a virtual environment (recommended):**
+   ```bash
+   python -m venv venv
+   ```
+
+3. **Activate the virtual environment (Windows only):**
+     ```bash
+     venv\Scripts\activate
+     ```
+
+4. **Install dependencies:**
    ```bash
    pip install -r requirements.txt
    ```
 
-## Running Locally
+## Running the Application
 
-1. **Navigate to the app directory:**
+1. **Navigate to the application directory:**
    ```bash
-   cd Testing_structure/app
+   cd app
    ```
 
 2. **Run the main application:**
@@ -51,23 +62,23 @@ PyTracker is a modern desktop productivity tool for Windows that helps you monit
    python main.py
    ```
 
-   > **Note:** For full functionality (app blocking), run as administrator.
+> **Tip:** Run as administrator to enable all features (like app blocking).
 
 ## Usage
 
-- The sidebar lets you switch between Dashboard, Restricted Apps/URLs, and History.
+- Use the sidebar to switch between Dashboard, Restricted Apps/URLs, and History.
 - Add or remove blocked apps and URLs from the Restricted page.
-- View daily and weekly stats, and detailed app usage charts.
+- View dailystats, and on-screen app usage charts.
 - The app minimizes to the tray when closed; restore from the tray icon.
 
 ## Contributing
 
-Contributions are welcome! Please open issues or submit pull requests for improvements or bug fixes.
+Contributions are welcome!  
+Feel free to open an issue or submit a pull request for improvements or bug fixes.
 
 ## License
-
-This project is under active development. License details will be added in a future release.
+PyScout is under active development. License details will be added in a future release.
 
 ---
 
-Let me know if you want to customize or expand any section!
+**Author:** Chandhru Loganathan
