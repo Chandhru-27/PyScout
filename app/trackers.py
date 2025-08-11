@@ -65,59 +65,32 @@ def reminder_logic(state):
             with state.lock:
                 now = datetime.now()
 
+                # Reminder notification
                 if state.total_stretch_time >= reminder_threshold:
                     if Utility.is_notification_disabled() or Utility.is_focus_assist_on():
                         notification.customnotify()
                     notification.notify()
                     state.total_stretch_time = 0
 
+                # Detect break: either user idle or device asleep
                 is_video_playback = any(
                     kw in state.active_window.lower() for kw in keywords.video_keywords
                 )
-                is_sleeping = (state.active_window.lower() in ("unknown", "unknow"))
-                is_user_idle = (state.idle_time >= idle_threshold)
+                is_sleeping = (gap_seconds > idle_threshold)
+                is_user_idle = (state.idle_time >= idle_threshold and not is_video_playback)
 
-                valid_break = (is_sleeping or is_user_idle) 
+                if is_sleeping or is_user_idle:
+                    state.total_break_duration += gap_seconds
 
-                if gap_seconds > idle_threshold:
-                    if state.break_start_time is not None:
-                        pass 
-                    else:
-                        state.break_start_time = now - timedelta(seconds=gap_seconds)
-                    return
-
-                if valid_break:
-                    if state.break_start_time is None:
-                        state.break_start_time = now
-
-                elif state.break_start_time is not None:
-                    break_end_time = now
-                    break_duration = (break_end_time - state.break_start_time).total_seconds()
-
-                    if hasattr(state, "last_break_end_time") and state.last_break_end_time:
-                        time_since_last_break = (
-                            break_end_time - state.last_break_end_time
-                        ).total_seconds()
-                        if time_since_last_break <= break_merge_gap:
-                            logger.debug("Merging with previous break.")
-                            break_duration += getattr(state, "last_break_duration", 0)
-
-                    state.total_break_duration += break_duration
+                    # Clamp so break time never exceeds 24h minus screen time
                     max_break = max(0, 86400 - state.screen_time)
                     if state.total_break_duration > max_break:
                         state.total_break_duration = max_break
 
-                    state.last_break_end_time = break_end_time
-                    state.last_break_duration = break_duration
-
                     logger.info(
-                        f"Break Ended. Duration: {state.get_formatted_screen_time(break_duration)}"
-                    )
-                    logger.info(
+                        f"Break detected. Added {state.get_formatted_screen_time(gap_seconds)}. "
                         f"Total Break Time: {state.get_formatted_screen_time(state.total_break_duration)}"
                     )
-
-                    state.break_start_time = None
 
         except Exception:
             logger.exception("Crash in reminder_logic:")
