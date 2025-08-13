@@ -1,0 +1,5 @@
+{
+   "app_version": "1.0.1",
+   "phase" : "testing",
+   "update_manifest_url": "https://yourdomain.com/latest.json"
+}
