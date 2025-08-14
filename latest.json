@@ -1,5 +1,5 @@
 {
    "app_version": "1.0.1",
    "phase" : "testing",
-   "update_manifest_url": "https://yourdomain.com/latest.json"
+   "update_manifest_url": "https://github.com/Chandhru-241801035/Project-Testing/releases/download/Latest/PyScout.exe"
 }
