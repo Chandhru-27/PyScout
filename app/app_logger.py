@@ -1,3 +1,4 @@
+"""Database logger configuration for PyScout application."""
 import logging
 from logging.handlers import RotatingFileHandler
 import os

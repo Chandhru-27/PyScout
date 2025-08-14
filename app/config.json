@@ -1,0 +1,7 @@
+{
+  "app_version": "1.0.2",
+  "update_manifest_url": "your_update_url_here",
+  "phase" : "Testing",
+  "appearance_mode": "dark",
+  "host_file_path": "C:\\Windows\\System32\\drivers\\etc\\hosts"
+}

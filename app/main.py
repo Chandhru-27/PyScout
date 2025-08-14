@@ -5,9 +5,31 @@ from app_logger import logger
 import trackers
 from datetime import datetime
 import threading
+import subprocess
 import db
 import ctypes
 import sys
+import os
+
+def run_silent_updates():
+    update_url = Utility.check_for_updates()
+    if update_url:
+        try:
+            local_path = Utility.download_latest_version(url=update_url)
+            if local_path:
+                logger.info("Installing update silently...")
+                process = subprocess.Popen([local_path, "/VERYSILENT", "/NORESTART"], shell=True)
+                process.wait()  
+
+                logger.info("Update installed. Restarting application...")
+                exe_path = sys.executable  
+                os.execv(exe_path, sys.argv)  
+
+        except Exception as e:
+            logger.exception(f"Updater failed {e}")
+    else:
+        logger.info("No updates found.")
+
 
 def run_with_admin_privileges():
     """Check if running with administrator privileges."""
@@ -18,6 +40,7 @@ def run_with_admin_privileges():
                 None, "runas", sys.executable, " ".join(sys.argv), None, 1
             )
             logger.info("Running as admin")
+            sys.exit(0)
     except Exception as e:
         logger.error(f"Error giving admin privileges: {e}")
 
@@ -44,6 +67,14 @@ def initialize_state(user_db):
         blocked_urls = user_db.load_blocked_urls()
         state.blocked_apps = blocked_apps
         state.blocked_urls = blocked_urls
+        state.dont_notify_apps = user_db.load_dont_notify_apps()
+        is_set_to, threshold, pomodoro_enabled, pomodoro_cycle = user_db.load_settings()
+        state.setting_name = is_set_to
+        state.reminder_threshold = threshold
+        state.pomodoro = pomodoro_enabled
+        state.pomodoro_cycle = pomodoro_cycle
+        state.break_setting_name , state.break_threshold = user_db.load_break_settings()
+        logger.info(f"Loaded settings: {state.break_setting_name}, idle threshold: {state.idle_threshold}.")
         
         if existing:
             screen_time, break_time = existing
@@ -92,12 +123,12 @@ def start_background_services(state, user_db):
 def main():
     """Main application entry point."""
     try:
-        
         logger.info("Starting PyScout...")
         
         run_with_admin_privileges()
         
         user_db = initialize_database()
+        
         if not user_db:
             logger.error("Failed to initialize database. Exiting.")
             sys.exit(1)
@@ -119,7 +150,8 @@ def main():
         
         app.title("PyScout")
         app.minsize(900,700)
-        img_path = Utility.resource_path("assets/icon.ico")
+        img_path = Utility.resource_path("assets/icon.ico") # Development
+        # img_path = Utility.resource_path("app/assets/icon.ico") # Production
         app.iconbitmap(default=img_path)
         logger.info("Application started successfully")
         app.mainloop()
@@ -133,4 +165,6 @@ def main():
         logger.info("Application shutting down")
     
 if __name__ == "__main__":
+    Utility.add_to_startup()
+    run_silent_updates()
     main()

@@ -24,6 +24,14 @@ class UserActivityState:
         self.blocked_apps = set()
         self.blocked_urls = set()
         self.is_paused = False
+        self.setting_name = "Standard"
+        self.pomodoro = False
+        self.pomodoro_cycle = 0
+        self.break_setting_name = "Standard"
+        self.break_threshold = 5 * 60
+        self.idle_threshold = 60
+        self.reminder_threshold = 45 * 60  
+        self.dont_notify_apps =  set()
 
     def update(self):
         """Update activity metrics based on idle time, active window, and audio status.
@@ -48,7 +56,7 @@ class UserActivityState:
             if today != self.last_date:
                 self.reset_daily_counters()
                 self.last_date = today
-                logger.debug("Day rollover detect and handled properly.")
+                logger.info("Day rollover detect and handled properly.")
 
             if self.is_paused:
                 self.last_check = now
@@ -101,7 +109,6 @@ class UserActivityState:
         self.total_stretch_time = 0
         self.screentime_per_app.clear()
         self.break_start_time = None
-
 
     def get_formatted_screen_time(self, arg):
         """Convert duration in seconds to HH:MM:SS string."""

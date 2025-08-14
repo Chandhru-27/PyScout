@@ -7,6 +7,7 @@ from db import Database
 from tkinter import filedialog
 from datetime import datetime 
 import customtkinter as ctk
+from utilities import APP_VERSION
 from PIL import Image
 import threading
 import pystray
@@ -61,6 +62,7 @@ class PyScout(ctk.CTk):
 
         self.blocked_apps = set(db.load_blocked_apps())
         self.blocked_urls = set(db.load_blocked_urls())
+        self.dont_notify_apps = set(db.load_dont_notify_apps())
         if self.blocked_apps:
             Utility.start_app_blocker(self.blocked_apps, scan_interval=1)
 
@@ -70,7 +72,8 @@ class PyScout(ctk.CTk):
         self.sidebar_frame.pack_propagate(False)
     
         # ==== Logo at the Bottom ====
-        self.logo_source = Image.open(Utility.resource_path("assets/logo.png"))  # store PIL image
+        self.logo_source = Image.open(Utility.resource_path("assets/logo.png")) # Development
+        # self.logo_source = Image.open(Utility.resource_path("app/assets/logo.png"))  # Production
         self.logo_ctk_img = ctk.CTkImage(self.logo_source, size=(100, 100))
         self.logo_label = ctk.CTkLabel(self.sidebar_frame, image=self.logo_ctk_img, text="")
         self.logo_label.pack(side="bottom", pady=20)
@@ -82,10 +85,19 @@ class PyScout(ctk.CTk):
         nav_items = [
             ("Home", "home.png"),
             ("Restricted", "block.png"),
-            ("History", "history.png")
+            ("History", "history.png"),
+            ("Settings", "settings.png")  # Uncomment if settings page is implemented
         ]
+        nav_images = [
+            "home.png",
+            "block.png",
+            "history.png",
+            "settings.png"
+        ]
+        flag = 0
         for name, icon_file in nav_items:
-            icon_path = Utility.resource_path("assets/home.png")
+            icon_path = Utility.resource_path(f"assets/{nav_images[flag]}") # Development
+            # icon_path = Utility.resource_path(f"app/assets/{nav_images[flag]}") # Production
             icon_img = Image.open(icon_path)
             self._nav_icon_sources[name] = icon_img
             icon = ctk.CTkImage(icon_img, size=(28, 28))
@@ -98,6 +110,7 @@ class PyScout(ctk.CTk):
             )
             btn.pack(fill="x", padx=20, pady=8)
             self.nav_buttons[name] = btn
+            flag += 1
 
         # ========= Main Frame with Transparent/Blurred Look ====== #
         self.main_frame = ctk.CTkFrame(self, corner_radius=20, fg_color="#181824")
@@ -147,7 +160,7 @@ class PyScout(ctk.CTk):
                 text = "💡 Reminder: While taking a break, minimize all activity and let your system idle or enter sleep mode."
                 color = "#fcc326"
             else:
-                text = "⚠️ Warning: Tracking disabled. Resume immediately to continue logging activity and breaks."
+                text = "⚠️ Warning: Tracking disabled. You will be notified every once in a while to resume tracking."
                 color = "#CF0000"
 
             self.warning_card = None
@@ -172,7 +185,7 @@ class PyScout(ctk.CTk):
                 else:
                     self.warning_compact_label.configure(
                         text=(
-                            "⚠️ Warning: Tracking disabled. Resume immediately to continue logging activity and breaks."
+                            "⚠️ Warning: Tracking disabled. You will be notified every once in a while to resume tracking."
                         ),
                         text_color="#CF0000",
                     )
@@ -193,7 +206,7 @@ class PyScout(ctk.CTk):
         head_color = text_color = None
         if not self.is_tracking:
             head = "Warning"
-            text = "Tracking disabled. Resume immediately to continue logging activity and breaks."
+            text = "Tracking disabled. You will be notified every once in a while to resume tracking."
             text_color = "#CF0000"
             head_color = "#ff0000"
         else:
@@ -230,7 +243,7 @@ class PyScout(ctk.CTk):
                 self.warning_icon_label.configure(text="⚠️", text_color="#ff0000")
                 self.warning_head_label.configure(text="Warning", text_color="#ff0000")
                 self.warning_message_label.configure(
-                    text="Tracking disabled. Resume immediately to continue logging activity and breaks.",
+                    text="Tracking disabled. You will be notified every once in a while to resume tracking.",
                     text_color="#CF0000",
                 )
 
@@ -276,7 +289,8 @@ class PyScout(ctk.CTk):
     def show_tray_icon(self):
         global tray_icon
 
-        icon_path = Utility.resource_path("assets/icon.ico")
+        icon_path = Utility.resource_path("assets/icon.ico") # Development
+        # icon_path = Utility.resource_path("app/assets/icon.ico") # Production
         icon_image = Image.open(icon_path)
 
         def _on_show(icon, item):
@@ -309,6 +323,8 @@ class PyScout(ctk.CTk):
             self.load_restricted_page()
         elif name == "History":
             self.load_history_page(self.current_page_index)
+        elif name == "Settings":
+            self.load_settings_page()
 
     def create_stat_card(self, parent, title, value, icon, bg_color, wide=False):
         card_width = 260 if wide else 170
@@ -374,6 +390,7 @@ class PyScout(ctk.CTk):
                     self.user_state.screentime_per_app.clear()
                 logger.info("Reset performed")
             show_reset_warning(reset_timer)
+            self.load_dashboard()
         
         self.reset_btn = ctk.CTkButton(heading_row, width=48, height=48, corner_radius=24, font=("Segoe UI", 24),
                                   text="⟳", fg_color="#232b3b", hover_color="#2979ff", text_color="#fff",
@@ -640,7 +657,7 @@ class PyScout(ctk.CTk):
         except Exception as e:
             logger.error(f"[UI Update Error]: {e}")
 
-        self.after(500, self.update_progress_bars)
+        self.after(5000, self.update_progress_bars)
 
 
     def load_history_page(self, page_index=0):
@@ -729,17 +746,21 @@ class PyScout(ctk.CTk):
         def refresh_blocked():
             for widget in container.winfo_children():
                 widget.destroy()
-            add_table_section("Blocked Apps", self.blocked_apps, is_app=True)
-            add_table_section("Blocked URLs", self.blocked_urls, is_app=False)
-
-        def unblock_item(item, is_app):
-            if is_app:
+            add_table_section("Blocked Apps:", self.blocked_apps, is_app=True)
+            add_table_section("Blocked URLs:", self.blocked_urls, is_app=False)
+            add_table_section("Suppress Notifications for:", self.dont_notify_apps, is_app=True , is_notification_suppress=True)
+        
+        def unblock_item(item, is_app , is_dont_notify = False):
+            if is_app and not is_dont_notify:
                 Utility.stop_app_blocker()
                 db.remove_from_blocked_apps(app_name=item)
                 self.blocked_apps = set(db.load_blocked_apps())
-                logger.debug(f"Blocked apps after removal: {self.blocked_apps}")
                 if self.blocked_apps:
                     Utility.start_app_blocker(self.blocked_apps, scan_interval=1)
+            elif is_app and is_dont_notify:
+                db.unsuppress_notification(app_name=item)
+                self.dont_notify_apps = self.user_state.dont_notify_apps =  set(db.load_dont_notify_apps())
+                logger.debug(f"Un-Suppressed notification for: {item}")
             else:
                 Utility.clean_hosts_file(HOST_PATH, item)
                 Utility.restart_dns_service()
@@ -748,15 +769,15 @@ class PyScout(ctk.CTk):
                 self.blocked_urls = set(db.load_blocked_urls())
 
             refresh_blocked()
-
-        def add_table_section(title, items, is_app):
+        
+        def add_table_section(title, items, is_app , is_notification_suppress = False):
             table_frame = ctk.CTkFrame(container, fg_color="#232b3b", corner_radius=14)
             table_frame.pack(fill="x", pady=(0, 20))
 
             header = ctk.CTkFrame(table_frame, fg_color="#205080", corner_radius=8)
             header.pack(fill="x")
             ctk.CTkLabel(header, text=title, font=("Segoe UI", 18, "bold"), text_color="#ffffff").grid(row=0, column=0, padx=12, pady=8, sticky="w")
-            ctk.CTkLabel(header, text="Action", font=("Segoe UI", 16, "bold"), text_color="#ffffff").grid(row=0, column=1, padx=12, pady=8, sticky="e")
+            # ctk.CTkLabel(header, text="Action", font=("Segoe UI", 16, "bold"), text_color="#ffffff").grid(row=0, column=1, padx=12, pady=8, sticky="e")
             header.grid_columnconfigure(0, weight=1)
             header.grid_columnconfigure(1, weight=0)
 
@@ -768,17 +789,21 @@ class PyScout(ctk.CTk):
                 unblock_btn = ctk.CTkButton(row, text="Unblock", width=80, height=30, font=("Segoe UI", 14, "bold"),
                                             fg_color="#205080", hover_color="#00bfae", text_color="#ffffff",
                                             corner_radius=8,
-                                            command=lambda item=item, is_app=is_app: unblock_item(item, is_app))
+                                            command=lambda item=item, is_app=is_app: unblock_item(item, is_app , is_notification_suppress))
                 unblock_btn.grid(row=0, column=1, padx=12, pady=6, sticky="e")
                 row.grid_columnconfigure(0, weight=1)
                 row.grid_columnconfigure(1, weight=0)
                 if idx < len(items):
                     ctk.CTkFrame(table_frame, height=2, fg_color="#181f2a").pack(fill="x", padx=8)
 
-            if is_app:
+            if is_app and not is_notification_suppress:
                 add_btn = ctk.CTkButton(table_frame, text="+ Add App", font=("Segoe UI", 15, "bold"), fg_color="#205080",
                                         hover_color="#00bfae", text_color="#ffffff", corner_radius=8,
                                         command=lambda: add_app_db())
+            elif is_app and is_notification_suppress:
+                add_btn = ctk.CTkButton(table_frame, text="+ Add App", font=("Segoe UI", 15, "bold"), fg_color="#205080",
+                        hover_color="#00bfae", text_color="#ffffff", corner_radius=8,
+                        command=lambda: add_block_notification_app_db())
             else:
                 add_btn = ctk.CTkButton(table_frame, text="+ Add URL", font=("Segoe UI", 15, "bold"), fg_color="#205080",
                                         hover_color="#00bfae", text_color="#ffffff", corner_radius=8,
@@ -787,7 +812,7 @@ class PyScout(ctk.CTk):
             add_btn.pack_configure(anchor="center")
 
         def add_app_db():
-            """adds """
+            """adds blocked apps to the database."""
             file_path = filedialog.askopenfilename(filetypes=[("Executable Files", "*.exe")])
             if file_path:
                 exe_name = os.path.basename(file_path)
@@ -798,6 +823,17 @@ class PyScout(ctk.CTk):
                     if self.blocked_apps:
                         Utility.start_app_blocker(self.blocked_apps, scan_interval=1)
                     refresh_blocked()
+
+        def add_block_notification_app_db():
+            """Creates the textbox popup to add app without notification."""
+            file_path = filedialog.askopenfilename(filetypes=[("Executable Files", "*.exe")])
+            if file_path:
+                exe_name = os.path.basename(file_path)
+                if exe_name not in self.dont_notify_apps:
+                    db.insert_dont_notify_apps(app_name=exe_name)
+                    self.user_state.dont_notify_apps = set(db.load_dont_notify_apps())
+                    self.dont_notify_apps = set(db.load_dont_notify_apps())
+                refresh_blocked()
 
         def add_url_db():
             """Creates the textbox popup to add url."""
@@ -844,15 +880,272 @@ class PyScout(ctk.CTk):
 
         refresh_blocked()
 
+    def load_settings_page(self):
+            """Load the settings page with options to set reminder threshold and pomodoro settings."""
+            for widget in self.main_frame.winfo_children():
+                widget.destroy()
+
+            # Heading
+            heading = ctk.CTkLabel(
+                self.main_frame,
+                text="Settings",
+                font=("Segoe UI", 40, "bold"),
+                text_color="#00bfae"
+            )
+            heading.pack(anchor="w", padx=30, pady=(40, 5))
+
+            date_label = ctk.CTkLabel(
+                self.main_frame,
+                text=datetime.now().strftime("%A, %B %d, %Y"),
+                font=("Segoe UI", 18),
+                text_color="#b0b8c1"
+            )
+            date_label.pack(anchor="w", padx=30, pady=(0, 20))
+
+            # Container
+            container = ctk.CTkFrame(self.main_frame, fg_color="#232b3b", corner_radius=14)
+            container.pack(fill="both", expand=True, padx=30, pady=20)
+
+            # Title
+            ctk.CTkLabel(
+                container,
+                text="Set Reminder Threshold",
+                font=("Segoe UI", 20, "bold"),
+                text_color="#ffffff"
+            ).pack(anchor="w", padx=20, pady=(20, 10))
+
+            # After you create the container or scrollable frame in load_settings_page
+            version_label = ctk.CTkLabel(
+                container,  # Or scroll_frame if you have one
+                text=f"PyScout {APP_VERSION}",
+                font=("Segoe UI", 14),
+                text_color="#6c757d"
+            )
+            version_label.place(relx=1.0, x=-20, y=10, anchor="ne")
+            
+            # Variable to hold selection
+            reminder_var = ctk.StringVar(value=self.user_state.setting_name)
+            custom_threshold_var = ctk.StringVar(value=str(self.user_state.reminder_threshold // 60))  
+
+            # Radio button creator with description
+            def add_radio_option(value, description):
+                frame = ctk.CTkFrame(container, fg_color="#232b3b")
+                frame.pack(fill="x", padx=20, pady=5)
+                ctk.CTkRadioButton(
+                    frame,
+                    text=value,
+                    variable=reminder_var,
+                    value=value,
+                    font=("Segoe UI", 16),
+                    text_color="#ffffff",
+                    fg_color="#2979ff",
+                    hover_color="#205080",
+                    command=lambda v=value: on_radio_change(v)
+                ).pack(side="left", padx=(0, 10))
+
+                ctk.CTkLabel(
+                    frame,
+                    text=description,
+                    font=("Segoe UI", 14),
+                    text_color="#b0b8c1",
+                    wraplength=500,
+                    justify="left"
+                ).pack(side="left")
+
+            def on_radio_change(selected):
+                if selected == "Standard":
+                    with self.user_state.lock:
+                        self.user_state.setting_name = selected
+                        self.user_state.reminder_threshold = 45 * 60
+                        self.user_state.pomodoro = False
+                        self.user_state.pomodoro_cycle = 0
+                    db.insert_app_setting(selected, self.user_state.reminder_threshold, self.user_state.pomodoro, self.user_state.pomodoro_cycle)
+                    self.load_settings_page()
+
+                elif selected == "Pomodoro":
+                    with self.user_state.lock:
+                        self.user_state.setting_name = selected
+                        self.user_state.pomodoro = True
+                        self.user_state.reminder_threshold = 25 * 60
+                        self.user_state.pomodoro_cycle = 0
+                    db.insert_app_setting(selected, self.user_state.reminder_threshold, self.user_state.pomodoro, self.user_state.pomodoro_cycle)
+                    self.load_settings_page()
+
+                elif selected == "Custom":
+                    open_custom_threshold_popup()
+
+            def open_custom_threshold_popup():
+                popup = ctk.CTkToplevel(self)
+                popup.title("Custom Reminder Threshold")
+                popup.configure(fg_color="#181f2a")
+                popup.resizable(False, False)
+
+                w, h = 380, 200
+                x = (popup.winfo_screenwidth() // 2) - (w // 2)
+                y = (popup.winfo_screenheight() // 2) - (h // 2)
+                popup.geometry(f"{w}x{h}+{x}+{y}")
+
+                ctk.CTkLabel(
+                    popup,
+                    text="Enter Reminder Threshold\n(in minutes, max 120)",
+                    font=("Segoe UI", 16),
+                    text_color="#ffffff"
+                ).pack(pady=(20, 10))
+
+                # Numeric only entry
+                def validate_number(P):
+                    return P.isdigit() and int(P) <= 120 or P == "" 
+                vcmd = (popup.register(validate_number), "%P")
+
+                entry = ctk.CTkEntry(
+                    popup,
+                    textvariable=custom_threshold_var,
+                    validate="key",
+                    validatecommand=vcmd,
+                    font=("Segoe UI", 16)
+                )
+                entry.pack(padx=20, pady=10)
+                
+                def save_custom():
+                    minutes = int(custom_threshold_var.get() or 45)
+                    with self.user_state.lock:
+                        self.user_state.setting_name = "Custom"
+                        self.user_state.pomodoro = False
+                        self.user_state.reminder_threshold = minutes * 60
+                        self.user_state.pomodoro_cycle = 0
+                    db.insert_app_setting("Custom", self.user_state.reminder_threshold, self.user_state.pomodoro, self.user_state.pomodoro_cycle)
+                    popup.destroy()
+                    self.load_settings_page()
+
+                ctk.CTkButton(
+                    popup,
+                    text="Save",
+                    fg_color="#3CBF8F",
+                    hover_color="#00bfae",
+                    command=save_custom
+                ).pack(pady=(10, 0))
+
+                popup.grab_set()
+
+            # Add the three reminder options
+            add_radio_option("Standard", "A standard reminder at fixed 45 minute intervals.")
+            add_radio_option("Pomodoro", "Follow the Pomodoro technique with work and break cycles.")
+            add_radio_option("Custom",f"Set your own desired reminder threshold. (current : {self.user_state.reminder_threshold // 60} mins)")
+
+                        # --- Set Break Threshold Section ---
+            ctk.CTkLabel(
+                container,
+                text="Modify Break Time",
+                font=("Segoe UI", 20, "bold"),
+                text_color="#ffffff"
+            ).pack(anchor="w", padx=20, pady=(30, 10))
+
+            break_var = ctk.StringVar(value=getattr(self.user_state, "break_setting_name", "Standard"))
+            custom_break_var = ctk.StringVar(value=str(self.user_state.break_threshold // 60))  
+
+            def add_break_radio(value, description):
+                frame = ctk.CTkFrame(container, fg_color="#232b3b")
+                frame.pack(fill="x", padx=20, pady=5)
+                ctk.CTkRadioButton(
+                    frame,
+                    text=value,
+                    variable=break_var,
+                    value=value,
+                    font=("Segoe UI", 16),
+                    text_color="#ffffff",
+                    fg_color="#2979ff",
+                    hover_color="#205080",
+                    command=lambda v=value: on_break_radio_change(v)
+                ).pack(side="left", padx=(0, 10))
+                ctk.CTkLabel(
+                    frame,
+                    text=description,
+                    font=("Segoe UI", 14),
+                    text_color="#b0b8c1",
+                    wraplength=500,
+                    justify="left"
+                ).pack(side="left")
+
+            def on_break_radio_change(selected):
+                if selected == "Standard":
+                    self.user_state.break_setting_name = selected
+                    self.user_state.break_threshold = 5 * 60  
+                    db.insert_break_setting(selected, self.user_state.break_threshold)
+                    self.load_settings_page()
+                elif selected == "Custom":
+                    open_custom_break_popup()
+
+            def open_custom_break_popup():
+                popup = ctk.CTkToplevel(self)
+                popup.title("Custom Break Threshold")
+                popup.configure(fg_color="#181f2a")
+                popup.resizable(False, False)
+
+                w, h = 380, 200
+                x = (popup.winfo_screenwidth() // 2) - (w // 2)
+                y = (popup.winfo_screenheight() // 2) - (h // 2)
+                popup.geometry(f"{w}x{h}+{x}+{y}")
+
+                ctk.CTkLabel(
+                    popup,
+                    text="Enter Break Threshold\n(in minutes, max 60)",
+                    font=("Segoe UI", 16),
+                    text_color="#ffffff"
+                ).pack(pady=(20, 10))
+
+                def validate_number(P):
+                    return P.isdigit() and int(P) <= 60 or P == "" 
+                vcmd = (popup.register(validate_number), "%P")
+
+                entry = ctk.CTkEntry(
+                    popup,
+                    textvariable=custom_break_var,
+                    validate="key",
+                    validatecommand=vcmd,
+                    font=("Segoe UI", 16)
+                )
+                entry.pack(padx=20, pady=10)
+                
+                def save_custom_break():
+                    minutes = int(custom_break_var.get() or 5)
+                    self.user_state.break_setting_name = "Custom"
+                    self.user_state.break_threshold = minutes * 60
+                    popup.destroy()
+
+                    db.insert_break_setting("Custom", minutes * 60)
+                    self.load_settings_page()
+
+                ctk.CTkButton(
+                    popup,
+                    text="Save",
+                    fg_color="#3CBF8F",
+                    hover_color="#00bfae",
+                    command=save_custom_break
+                ).pack(pady=(10, 0))
+
+                popup.grab_set()
+
+            # Add Break Threshold options
+            add_break_radio("Standard", "Suggests a standard 5 minute break")
+            add_break_radio("Custom", f"Set your own desired break time. (current : {self.user_state.break_threshold // 60} mins)")
+
+            self.current_page = "Settings"
+
+
     def load_app_usage_page(self, date: str):
         """Open a centered window showing a bar chart of app usage percentages for the given date."""
         try:
+            import matplotlib
+            matplotlib.use('TkAgg')  # Better for embedding in Tkinter/CustomTkinter
             from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
             from matplotlib.figure import Figure
+            from datetime import datetime
 
             db.run_cleanup()
             usage = db.load_existing_appwise_usage(date)
-            if not usage:
+
+            # Handle no data or all zero durations
+            if not usage or all(float(v) == 0 for v in usage.values()):
                 info = ctk.CTkToplevel(self)
                 info.title("App Usage")
                 w, h = 360, 140
@@ -863,20 +1156,26 @@ class PyScout(ctk.CTk):
                 x = (info.winfo_screenwidth() // 2) - (w // 2)
                 y = (info.winfo_screenheight() // 2) - (h // 2)
                 info.geometry(f"{w}x{h}+{x}+{y}")
-                ctk.CTkLabel(info, text=f"No usage data for {date}", font=("Segoe UI", 16), text_color="#ffffff").pack(pady=20)
-                ctk.CTkButton(info, text="Close", command=info.destroy, fg_color="#355691", hover_color="#008b7f").pack(pady=10)
+                ctk.CTkLabel(info, text=f"No usage data for {date}", font=("Segoe UI", 16),
+                            text_color="#ffffff").pack(pady=20)
+                ctk.CTkButton(info, text="Close", command=info.destroy,
+                            fg_color="#355691", hover_color="#008b7f").pack(pady=10)
                 info.grab_set()
                 info.focus_set()
                 return
 
-            total = sum(float(v) for v in usage.values()) or 1.0
-            percent_pairs = [
-                (app, (float(dur) / total) * 100.0) for app, dur in usage.items()
-            ]
-            percent_pairs.sort(key=lambda x: x[1], reverse=True)
+            # Convert to floats once for efficiency
+            usage_floats = {app: float(dur) for app, dur in usage.items()}
+            total = sum(usage_floats.values()) or 1.0
+
+            # Create percentage list
+            percent_pairs = [(app, (dur / total) * 100.0) for app, dur in usage_floats.items()]
+            percent_pairs.sort(key=lambda x: (-x[1], x[0].lower()))  # Sort by percentage, then name
+
             app_names = [a for a, _ in percent_pairs]
             percentages = [p for _, p in percent_pairs]
 
+            # Create main window
             win = ctk.CTkToplevel(self)
             win.title("App Usage")
             width, height = 900, 600
@@ -885,26 +1184,31 @@ class PyScout(ctk.CTk):
             win.resizable(True, True)
             win.grab_set()
 
+            # Center window
             win.update_idletasks()
             x = (win.winfo_screenwidth() // 2) - (width // 2)
             y = (win.winfo_screenheight() // 2) - (height // 2)
             win.geometry(f"{width}x{height}+{x}+{y}")
 
-            date_object = datetime.strptime(date , "%Y-%m-%d")
-            formatted_date = date_object.strftime("%A, %B %d, %Y")
+            # Format date for display
+            formatted_date = datetime.strptime(date, "%Y-%m-%d").strftime("%A, %B %d, %Y")
+            ctk.CTkLabel(win, text=f"On-Screen App Usage for {formatted_date}",
+                        font=("Segoe UI", 24, "bold"), text_color="#00bfae").pack(pady=(20, 10))
 
-            title = ctk.CTkLabel(win, text=f"On-Screen App Usage for {formatted_date}", font=("Segoe UI", 24, "bold"), text_color="#00bfae")
-            title.pack(pady=(20, 10))
-
+            # Chart frame
             chart_frame = ctk.CTkFrame(win, fg_color="#232b3b")
             chart_frame.pack(fill="both", expand=True, padx=20, pady=10)
 
-            fig = Figure(figsize=(9.5, 5.2), dpi=100)
+            # Responsive figure size based on window
+            fig_width = max(width / 95, 8.5)
+            fig_height = max(height / 110, 5)
+            fig = Figure(figsize=(fig_width, fig_height), dpi=100)
             fig.patch.set_facecolor("#232b3b")
+
             ax = fig.add_subplot(111)
             ax.set_facecolor("#232b3b")
 
-            bar_color = "#00bfae"  
+            bar_color = "#00bfae"
             edge_color = "#00d1c6"
             bars = ax.bar(app_names, percentages, color=bar_color, edgecolor=edge_color, linewidth=0.6)
 
@@ -921,38 +1225,33 @@ class PyScout(ctk.CTk):
             for spine in ax.spines.values():
                 spine.set_color("#4a5568")
 
-            try:
-                ax.bar_label(bars, fmt='%.1f%%', padding=3, fontsize=11, color="#ffffff")
-            except Exception:
-                for rect, pct in zip(bars, percentages):
-                    height = rect.get_height()
-                    ax.annotate(f"{pct:.1f}%",
-                                xy=(rect.get_x() + rect.get_width() / 2, height),
-                                xytext=(0, 3),
-                                textcoords="offset points",
-                                ha='center', va='bottom', fontsize=11, color="#ffffff")
+            # Always annotate bars
+            for rect, pct in zip(bars, percentages):
+                ax.annotate(f"{pct:.1f}%",
+                            xy=(rect.get_x() + rect.get_width() / 2, rect.get_height()),
+                            xytext=(0, 3),
+                            textcoords="offset points",
+                            ha='center', va='bottom', fontsize=11, color="#ffffff")
 
             fig.tight_layout(pad=1.2)
 
+            # Embed chart
             canvas = FigureCanvasTkAgg(fig, master=chart_frame)
             canvas.draw()
             canvas.get_tk_widget().pack(fill="both", expand=True, padx=10, pady=10)
 
+            # Back button
             btn_row = ctk.CTkFrame(win, fg_color="transparent")
             btn_row.pack(fill="x", pady=(0, 16))
-            back_btn = ctk.CTkButton(
-                btn_row,
-                text="Back",
-                width=100,
-                fg_color="#355691",
-                hover_color="#008b7f",
-                command=win.destroy,
-            )
-            back_btn.pack(pady=4)
+            ctk.CTkButton(btn_row, text="Back", width=100,
+                        fg_color="#355691", hover_color="#008b7f",
+                        command=win.destroy).pack(pady=4)
 
             win.focus_set()
+
         except Exception as e:
             logger.exception(f"Failed to render app usage for {date}: {e}")
+
 
     def create_info_card(self, parent, title, value, color):
         """Returns a parent card to hold the stats."""

@@ -1,18 +1,37 @@
 from datetime import datetime, timedelta
 from pycaw.pycaw import AudioUtilities
 from app_logger import logger
+from packaging import version
+import tempfile
 import win32process
 import subprocess
 import pythoncom
 import threading
 import win32gui
+import requests
 import psutil
 import ctypes
 import winreg
 import time
+import json
 import wmi
 import sys
 import os
+
+if getattr(sys, 'frozen', False):
+    BASE_DIR = sys._MEIPASS
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# with open(os.path.join(BASE_DIR, "app", "config.json"), 'r', encoding='utf-8') as f:
+#     config = json.load(f)
+
+with open(os.path.join(BASE_DIR,'config.json') , 'r' , encoding='utf-8') as f:
+    config = json.load(f)
+    
+APP_VERSION = config["app_version"]
+UPDATE_MANIFEST_URL = config["update_manifest_url"]
+
 
 """ Global application shutdown event (used by timers/trackers)."""
 shutdown_event = threading.Event()
@@ -25,6 +44,51 @@ app_blocker_threads = []
 class Utility:
     """Collection of system utilities for activity tracking and app/URL blocking."""
     audio_lock = threading.Lock()
+    
+    @staticmethod
+    def add_to_startup(app_name="PyScout", exe_path=None):
+        if exe_path is None:
+            exe_path = sys.executable  
+        key = winreg.HKEY_CURRENT_USER
+        key_val = r"Software\Microsoft\Windows\CurrentVersion\Run"
+        with winreg.OpenKey(key, key_val, 0, winreg.KEY_SET_VALUE) as registry_key:
+            winreg.SetValueEx(registry_key, app_name, 0, winreg.REG_SZ, exe_path)
+
+    @staticmethod
+    def check_for_updates():
+        try:
+            response = requests.get(UPDATE_MANIFEST_URL , timeout=5)
+            response.raise_for_status()
+            latest_config = response.json()
+            
+            if 'app_version' not in latest_config or 'update_manifest_url' not in latest_config:
+                logger.error("Missing required manifest key.")
+                return None
+
+            if version.parse(latest_config["app_version"]) > version.parse(APP_VERSION):
+                return latest_config["update_manifest_url"]
+            return None
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Network error while checking for update: {e}")
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON in update manifest: {e}")
+        except Exception as e:
+            logger.error(f"Unexpected error while checking for update: {e}")
+        return None
+
+    @staticmethod
+    def download_latest_version(url):
+        try:
+            temp_dir = tempfile.gettempdir()
+            temp_path = os.path.join(temp_dir,'PyScoutUpdate.exe')
+            with requests.get(url , stream=True) as r:
+                r.raise_for_status()
+                with open(temp_path , "wb") as f:
+                    for chunk in r.iter_content(8192):
+                        f.write(chunk)
+            return temp_path
+        except Exception as e:
+            logger.exception("Unable to download latest version.")
 
     @staticmethod
     def get_idle_time():
@@ -95,7 +159,7 @@ class Utility:
                 for session in sessions:
                     try:
                         volume = session.SimpleAudioVolume
-                        if session.State == 1:  # Active audio
+                        if session.State == 1: 
                             level = volume.GetMasterVolume()
                             if level > 0.0:
                                 return True
@@ -155,7 +219,7 @@ class Utility:
                 for _ in range(scan_interval):
                     if app_blocker_shutdown_event.is_set():
                         break
-                    time.sleep(1)
+                    time.sleep(5)
             except Exception as e:
                 logger.error(f"[SCAN] Unexpected error: {e}", exc_info=True)
                 if app_blocker_shutdown_event.is_set():
@@ -217,20 +281,22 @@ class Utility:
 
     @staticmethod
     def stop_app_blocker():
-        """Stop app blocker threads and reset internal state."""
+        """Stop app blocker threads and reset internal state safely."""
         global app_blocker_threads
         if not app_blocker_threads:
             return
-        
+
         app_blocker_shutdown_event.set()
 
-        for thread in app_blocker_threads:
-            if thread.is_alive():
-                thread.join()
-        
-        app_blocker_threads = []
-        logger.info("App blocker threads stopped.")     
+        def join_threads():
+            for thread in app_blocker_threads:
+                if thread.is_alive():
+                    thread.join(timeout=5) 
+            logger.info("App blocker threads stopped.")
 
+        threading.Thread(target=join_threads, daemon=True).start()
+        app_blocker_threads = []
+    
     @staticmethod
     def block_url(HOST_PATH , website):
         """Append a hosts-file entry for the given website if not already present."""
@@ -239,6 +305,7 @@ class Utility:
                 file_data = file.read()
                 if website not in file_data:
                     file.write(f"128.0.0.1 {website}\n")
+                    file.write(f"128.0.0.1 www.{website}\n")
                     logger.info(f"Written to host file and blocked {website}")
         except Exception as e:
             logger.error("Error opening host file and Blocking website")
@@ -258,10 +325,10 @@ class Utility:
             logger.info(f"[+] '{BLOCKED_DOMAIN}' removed from hosts file.")
         except PermissionError:
             logger.warning("[-] Permission denied: Run this script as administrator.")
-            exit(1)
+            pass
         except Exception as e:
             logger.error(f"[-] Error cleaning hosts file: {e}")
-            exit(1)
+            pass
 
     @staticmethod
     def restart_dns_service():
@@ -365,4 +432,3 @@ class Utility:
             base_path = os.path.dirname(__file__) 
 
         return os.path.join(base_path, relative_path)
-    

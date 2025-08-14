@@ -1,6 +1,10 @@
 """
 Search keywords for active video playback tracking.
+This list can be extended or modified based on user feedback or new trends in media consumption.
+The goal is to capture a wide range of applications that are likely to play video or audio content,
+while avoiding false positives from unrelated apps.   
 """
+
 
 video_keywords = [
                 # Web Browsers (may contain video/audio)

@@ -49,7 +49,10 @@ class Database:
             'GENERAL_USAGE': schema.CREATE_TABLE_USER_STATS,
             'APP_USAGE': schema.CREATE_TABLE_APPLICATION_USAGE,
             'blocked_apps': schema.CREATE_TABLE_BLOCKED_APPS,
-            'blocked_urls': schema.CREATE_TABLE_BLOCKED_URLS
+            'blocked_urls': schema.CREATE_TABLE_BLOCKED_URLS,
+            'app_settings': schema.CREATE_TABLE_APP_SETTINGS,
+            "break_settings" : schema.CREATE_TABLE_BREAK_SETTINGS,
+            "dont_notify" : schema.CREATE_TABLE_DONT_NOTIFY_APPS
         }
         
         for attempt in range(MAX_RETRIES):
@@ -169,6 +172,34 @@ class Database:
         )
         logger.debug(f"Blocked URL added: {url}")
 
+    def insert_app_setting(self , setting_name: str, reminder_threshold: int = 2700,
+                           pomodoro_enabled: bool = False, pomodoro_cycle: int = 0):
+        """Handles db logic to insert or update app settings."""
+        self.execute_with_retry("DELETE FROM app_settings WHERE id = 1")
+        self.execute_with_retry(
+            """
+            INSERT OR REPLACE INTO app_settings (id , setting_name, reminder_threshold, pomodoro_enabled, pomodoro_cycle)
+            VALUES (1,?, ?, ?, ?);
+            """,(setting_name, reminder_threshold, int(pomodoro_enabled), pomodoro_cycle)
+        )
+    
+    def insert_break_setting(self , setting_name : str , break_threshold: int = 60):
+        """Handles db logic to insert or update break settings."""
+        self.execute_with_retry("DELETE FROM break_settings WHERE id = 1")
+        self.execute_with_retry(
+            """
+            INSERT OR REPLACE INTO break_settings (id , break_setiing, break_threshold)
+            VALUES (1,?, ?);
+            """,(setting_name, break_threshold)
+        )
+    
+    def insert_dont_notify_apps(self , app_name):
+        """Handles db logic to suppress notification for selective apps."""
+        self.execute_with_retry(
+            "INSERT OR IGNORE INTO dont_notify_apps (app_name) VALUES (?)",(app_name.strip().lower(),)
+        )
+        logger.debug(f"Notification suppressed for {app_name}")
+
     def remove_from_blocked_apps(self, app_name: str):
         """Handles db logic to unblock apps."""
         self.execute_with_retry(
@@ -239,7 +270,16 @@ class Database:
                     raise
 
         raise sqlite3.OperationalError("DB still locked after retries.")
-        
+    
+    def unsuppress_notification(self, app_name):
+        """Removes app from dont notify table inorder to unsuppress notification."""
+        try:
+            with self.get_connection() as (conn , cursor):
+                cursor.execute("DELETE FROM dont_notify_apps WHERE app_name = ?",(app_name,))
+                conn.commit()
+        except Exception as e:
+            logger.debug(f"Unable to unsuppress app. Maybe some issue with database.")
+            
     def reset_data(self, date):
         """Resets the user data for the current day (Backend logic of reset button in UI)."""
         try:
@@ -314,6 +354,10 @@ class Database:
         """Returns the blocked urls to load into the in-memory variables."""
         return {row[0] for row in self.fetch_all("SELECT url FROM blocked_urls")}
 
+    def load_dont_notify_apps(self):
+        """Returns the apps for which the notification is suppressed."""
+        return {row[0] for row in self.fetch_all("SELECT app_name from dont_notify_apps")}
+    
     def is_app_blocked(self, app_name: str) -> bool:
         """Checks if an app is already blocked."""
         return self.fetch_one(
@@ -350,3 +394,44 @@ class Database:
         except Exception:
             avg_seconds = 0
         return avg_seconds
+    
+    def load_settings(self):
+        """Load the most recent user settings from the database."""
+        try:
+            row = self.fetch_one(
+                """
+                SELECT setting_name, reminder_threshold, pomodoro_enabled, pomodoro_cycle
+                FROM app_settings
+                LIMIT 1
+                """
+            )
+            if row:
+                setting_name, reminder_threshold, pomodoro_enabled, pomodoro_cycle = row
+                return setting_name, reminder_threshold, bool(pomodoro_enabled), pomodoro_cycle
+            else:
+                return "Standard", 2700, False, 0
+        except Exception as e:
+            logger.error(f"Failed to load settings: {e}")
+            return "Standard", 2700, False, 0
+
+    def load_break_settings(self):
+        """Load the most recent break settings from the database."""
+        try:
+            row = self.fetch_one(
+                """
+                SELECT break_setiing, break_threshold
+                FROM break_settings
+                LIMIT 1
+                """
+            )
+            if row:
+                setting_name, break_threshold = row
+                return setting_name, break_threshold
+            else:
+                return "Standard", 60
+        except Exception as e:
+            logger.error(f"Failed to load break settings: {e}")
+            return "Standard", 60
+
+    def delete(self):
+        self.execute_with_retry("DROP TABLE IF EXISTS app_settings")

@@ -3,22 +3,46 @@ from winotify import Notification, audio
 from utilities import Utility
 import customtkinter as ctk
 import tkinter as tk
+from userstate import UserActivityState
+import time
 
-def notify():
+
+def notify(state):
+    notification_msg = f"You've been active for {state.reminder_threshold // 60} mins. Break for {state.break_threshold // 60} mins."
     """Shows a native Windows toast reminder notification."""
+    if state.pomodoro:
+        state.pomodoro_cycle += 1
+        print(f"Pomodoro cycle incremented to {state.pomodoro_cycle}")
+    if state.pomodoro_cycle == 2:
+        notification_msg = f"Pomodoro cycle complete! Take a longer break of at least {(state.break_threshold // 60) + 15} minutes."
+        print("Pomodoro cycle complete! Taking a longer break.")
+        state.pomodoro_cycle = 0
     toast = Notification(
         app_id="PyScout",
-        title="PyScout - Reminder ⚠️",
-        msg="You've been active for over 45 mins. Break for 5 mins.",
-        icon=Utility.resource_path("assets/icon.ico"),
+        title="PyScout - Reminder",
+        msg=notification_msg,
+        icon = Utility.resource_path("assets/icon.ico"), # Development
+        # icon=Utility.resource_path("app/assets/icon.ico"), # Production
         duration='short'
     )
     toast.set_audio(audio.Reminder, loop=False)
     toast.add_actions(label="OK", launch="")
     toast.show()
 
-def customnotify():
+def custom_notify(state):
     """Display an in-app modal reminder when system notifications are unavailable."""
+
+    notification_msg = f"You’ve been active for {state.reminder_threshold // 60} mins.\nBreak for {state.break_threshold // 60} mins."
+
+    if state.pomodoro:
+        state.pomodoro_cycle += 1
+        print(f"Pomodoro cycle incremented to {state.pomodoro_cycle}")
+
+    if state.pomodoro_cycle >= 4:  
+        notification_msg = f"Pomodoro cycle complete! Take a longer break of at least {(state.break_threshold // 60) + 15} minutes."
+        print("Pomodoro cycle complete! Taking a longer break.")
+        state.pomodoro_cycle = 0
+
     root = tk.Tk()
     root.title("Reminder - PyScout")
     root.configure(bg="#181f2a")  
@@ -38,7 +62,7 @@ def customnotify():
 
     label = tk.Label(
         card,
-        text="You’ve been active for 45 mins.\nBreak for 5 mins.",
+        text=notification_msg,
         font=("Segoe UI", 14, "bold"),
         fg="white",
         bg="#232b3b",
@@ -69,6 +93,75 @@ def customnotify():
     close_btn.bind("<Leave>", on_leave)
 
     root.mainloop()
+
+def notify_paused(state):
+    """Display a notification when PyScout is paused."""
+    while state.is_paused:
+        toast = Notification(
+                app_id="PyScout",
+                title="PyScout - Reminder",
+                msg="[WARNING]: PyScout is paused. Resume to continue tracking.",
+                icon=Utility.resource_path("assets/icon.ico"), # Development
+                # icon=Utility.resource_path("app/assets/icon.ico"), # Production
+                duration='short'
+            )
+        toast.set_audio(audio.Reminder, loop=False)
+        toast.add_actions(label="OK", launch="")
+        toast.show()
+        time.sleep(15 * 60)  
+
+def custom_notify_paused(state):
+    """Display an in-app modal when PyScout is paused."""
+    while state.is_paused:
+        root = tk.Tk()
+        root.title("PyScout - Warning")
+        root.configure(bg="#181f2a")
+        root.resizable(False, False)
+
+        window_width, window_height = 500, 150
+        screen_width = root.winfo_screenwidth()
+        screen_height = root.winfo_screenheight()
+        x = (screen_width // 2) - (window_width // 2)
+        y = (screen_height // 2) - (window_height // 2)
+        root.geometry(f"{window_width}x{window_height}+{x}+{y}")
+
+        card = tk.Frame(root, bg="#232b3b", bd=0, relief="flat")
+        card.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.92, relheight=0.85)
+
+        label = tk.Label(
+            card,
+            text="[WARNING]: PyScout is paused.\nResume to continue tracking.",
+            font=("Segoe UI", 14, "bold"),
+            fg="white",
+            bg="#232b3b",
+            wraplength=440,
+            justify="center"
+        )
+        label.pack(pady=(15, 5))
+
+        close_btn = tk.Button(
+            card,
+            text="Close",
+            command=root.destroy,
+            bg="#2979ff",
+            fg="white",
+            font=("Segoe UI", 11, "bold"),
+            activebackground="#00bfae",
+            activeforeground="white",
+            relief="flat",
+            cursor="hand2",
+            padx=15,
+            pady=5
+        )
+        close_btn.pack(pady=(5, 10))
+
+        def on_enter(e): close_btn.config(bg="#00bfae")
+        def on_leave(e): close_btn.config(bg="#2979ff")
+        close_btn.bind("<Enter>", on_enter)
+        close_btn.bind("<Leave>", on_leave)
+
+        root.mainloop()
+        time.sleep(15 * 60)  
 
 def show_reset_warning(callback_on_proceed):
     """Display a centered modal to confirm reset, invoking a callback on proceed."""

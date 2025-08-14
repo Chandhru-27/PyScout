@@ -37,6 +37,7 @@ User_db.sqlite3
 logs/
 *.log
 
+
 # IDE/Editor
 .vscode/
 .idea/
@@ -57,6 +58,7 @@ Thumbs.db
 # PyInstaller
 *.manifest
 *.spec
+*.iss
 build/
 dist/
 
