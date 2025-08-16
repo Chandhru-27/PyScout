@@ -1,19 +1,12 @@
-from base_layout import PyScout
-from userstate import UserActivityState
 from utilities import Utility
 from app_logger import logger
-import trackers
-from datetime import datetime
-import threading
-import subprocess
-import db
-import ctypes
 import sys
 import os
 
 def run_silent_updates():
     update_url = Utility.check_for_updates()
     if update_url:
+        import subprocess
         try:
             local_path = Utility.download_latest_version(url=update_url)
             if local_path:
@@ -33,6 +26,7 @@ def run_silent_updates():
 
 def run_with_admin_privileges():
     """Check if running with administrator privileges."""
+    import ctypes
     try:
         if not Utility.is_admin():
             logger.warning("Application not running as administrator")
@@ -46,6 +40,7 @@ def run_with_admin_privileges():
 
 def initialize_database():
     """Initialize database with error handling."""
+    import db
     try:
         logger.info("Initializing database...")
         user_db = db.Database()
@@ -57,6 +52,8 @@ def initialize_database():
 
 def initialize_state(user_db):
     """Initialize user state with existing data."""
+    from datetime import datetime
+    from userstate import UserActivityState
     try:
         state = UserActivityState()
         
@@ -92,6 +89,8 @@ def initialize_state(user_db):
 
 def start_background_services(state, user_db):
     """Start background tracking and reminder services."""
+    import threading
+    import trackers
     try:
         if state.blocked_apps:
             Utility.start_app_blocker(state.blocked_apps, scan_interval=1)
@@ -143,6 +142,7 @@ def main():
             logger.error("Failed to start background services. Exiting.")
             sys.exit(1)
          
+        from base_layout import PyScout
         logger.info("Starting user interface...")
         app = PyScout(state=state)
         app.tracker_thread = tracker_thread
@@ -150,8 +150,8 @@ def main():
         
         app.title("PyScout")
         app.minsize(900,700)
-        img_path = Utility.resource_path("assets/icon.ico") # Development
-        # img_path = Utility.resource_path("app/assets/icon.ico") # Production
+        # img_path = Utility.resource_path("assets/icon.ico") # Development
+        img_path = Utility.resource_path("app/assets/icon.ico") # Production
         app.iconbitmap(default=img_path)
         logger.info("Application started successfully")
         app.mainloop()

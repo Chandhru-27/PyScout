@@ -4,7 +4,6 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from datetime import datetime, timedelta
 from utilities import Utility
 from app_logger import logger
-import keywords
 import threading
 
 class UserActivityState:
@@ -79,6 +78,7 @@ class UserActivityState:
             self.is_active_audio = audio
 
             audio_app = self.active_window.lower()
+            import keywords
             is_video_playback = any(kw in audio_app for kw in keywords.video_keywords)
 
             is_active_user = (self.idle_time < 60) or (is_video_playback and self.is_active_audio)

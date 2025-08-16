@@ -5,11 +5,20 @@ import schema
 import sqlite3
 import time
 import os
+import sys
 
-appdata_path = os.getenv('APPDATA')
-app_dir = os.path.join(appdata_path, 'PyScout' , 'userdata')
+# Modify the app_dir creation
+if getattr(sys, 'frozen', False):
+    # Running in compiled mode
+    appdata_path = os.getenv('APPDATA')
+    app_dir = os.path.join(appdata_path, 'PyScout', 'userdata')
+else:
+    # Running in development mode
+    app_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'userdata')
+
 os.makedirs(app_dir, exist_ok=True)
 db_path = os.path.join(app_dir, 'User_db.sqlite3')
+
 
 TIMEOUT = 10          
 MAX_RETRIES = 5       

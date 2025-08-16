@@ -1,20 +1,8 @@
 from datetime import datetime, timedelta
-from pycaw.pycaw import AudioUtilities
 from app_logger import logger
-from packaging import version
-import tempfile
-import win32process
-import subprocess
-import pythoncom
 import threading
-import win32gui
-import requests
-import psutil
-import ctypes
-import winreg
 import time
 import json
-import wmi
 import sys
 import os
 
@@ -47,6 +35,7 @@ class Utility:
     
     @staticmethod
     def add_to_startup(app_name="PyScout", exe_path=None):
+        import winreg
         if exe_path is None:
             exe_path = sys.executable  
         key = winreg.HKEY_CURRENT_USER
@@ -57,14 +46,16 @@ class Utility:
     @staticmethod
     def check_for_updates():
         try:
-            response = requests.get(UPDATE_MANIFEST_URL , timeout=5)
+            import requests
+            response = requests.get(UPDATE_MANIFEST_URL , timeout=2)
             response.raise_for_status()
             latest_config = response.json()
             
             if 'app_version' not in latest_config or 'update_manifest_url' not in latest_config:
                 logger.error("Missing required manifest key.")
                 return None
-
+            
+            from packaging import version
             if version.parse(latest_config["app_version"]) > version.parse(APP_VERSION):
                 return latest_config["update_manifest_url"]
             return None
@@ -78,6 +69,8 @@ class Utility:
 
     @staticmethod
     def download_latest_version(url):
+        import tempfile
+        import requests
         try:
             temp_dir = tempfile.gettempdir()
             temp_path = os.path.join(temp_dir,'PyScoutUpdate.exe')
@@ -93,6 +86,7 @@ class Utility:
     @staticmethod
     def get_idle_time():
         """Return user idle time in seconds using Windows APIs."""
+        import ctypes
         class LASTINPUTINFO(ctypes.Structure):
             _fields_ = [("cbSize", ctypes.c_uint), ("dwTime", ctypes.c_uint)]
 
@@ -111,6 +105,9 @@ class Utility:
     @staticmethod
     def get_active_window_title():
         """Return process name of the foreground window (lower-level via Win32)."""
+        import win32process
+        import win32gui
+        import psutil
         handle = win32gui.GetForegroundWindow()
         try:
             _,process_id = win32process.GetWindowThreadProcessId(handle)
@@ -130,6 +127,7 @@ class Utility:
 
         for reg_path in reg_paths:
             try:
+                import winreg
                 reg_key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, reg_path)
                 for i in range(0, winreg.QueryInfoKey(reg_key)[0]):
                     sub_key_name = winreg.EnumKey(reg_key, i)
@@ -154,6 +152,7 @@ class Utility:
                 CoInitialize()
             except Exception:
                 pass 
+            from pycaw.pycaw import AudioUtilities
             try:
                 sessions = AudioUtilities.GetAllSessions()
                 for session in sessions:
@@ -177,6 +176,7 @@ class Utility:
         """Terminate a process by name if it is present in the blocked set."""
         try:
             if process_name in blocked_apps:
+                import psutil
                 for proc in psutil.process_iter(['pid', 'name']):
                     if proc.info['name'] == process_name:
                         proc.kill()
@@ -187,6 +187,7 @@ class Utility:
     @staticmethod
     def kill_process_tree(pid):
         """Kill a process and all of its child processes by PID."""
+        import psutil
         try:
             parent = psutil.Process(pid)
             for child in parent.children(recursive=True):
@@ -203,6 +204,7 @@ class Utility:
     @staticmethod
     def background_scanner(blocked_apps: set, scan_interval: int = 5):
         """Scan processes periodically and kill those matching blocked apps (fast shutdown)."""
+        import psutil
         while not app_blocker_shutdown_event.is_set():
             try:
                 for proc in psutil.process_iter(['name', 'pid']):
@@ -228,6 +230,8 @@ class Utility:
     @staticmethod
     def wmi_event_watcher(blocked_apps: set):
         """Watch process creation events and terminate newly started blocked apps."""
+        import pythoncom
+        import wmi
         pythoncom.CoInitialize()
         try:
             while not app_blocker_shutdown_event.is_set():
@@ -329,9 +333,11 @@ class Utility:
         except Exception as e:
             logger.error(f"[-] Error cleaning hosts file: {e}")
             pass
-
+    
+   
     @staticmethod
     def restart_dns_service():
+        import subprocess
         """Restart the Windows DNS Client service to apply hosts changes."""
         try:
             subprocess.run(["net", "stop", "dnscache"], check=True)
@@ -342,6 +348,7 @@ class Utility:
 
     @staticmethod
     def flush_dns():
+        import subprocess
         """Flush DNS cache to apply hosts changes immediately."""
         try:
             subprocess.run(["ipconfig", "/flushdns"], check=True)
@@ -353,12 +360,15 @@ class Utility:
     def is_admin():
         """Return True if the process has administrative privileges."""
         try:
+            import ctypes
             return ctypes.windll.shell32.IsUserAnAdmin()
         except:
             return False
     
+    
     @staticmethod
     def is_notification_disabled():
+        import winreg
         """Return True/False if Windows toast notifications are disabled; None if unknown."""
         try:
             key = winreg.OpenKey(
@@ -373,6 +383,7 @@ class Utility:
     
     @staticmethod
     def is_focus_assist_on():
+        import winreg
         """Return True/False if Focus Assist is active; None if unknown."""
         try:
             key = winreg.OpenKey(
@@ -425,10 +436,9 @@ class Utility:
 
     @staticmethod
     def resource_path(relative_path):
-        """Get absolute path to resource, works for dev and PyInstaller."""
-        try:
-            base_path = sys._MEIPASS 
-        except AttributeError:
-            base_path = os.path.dirname(__file__) 
-
+        if getattr(sys, 'frozen', False):
+            # Nuitka onefile (and PyInstaller) temp extraction folder
+            base_path = getattr(sys, '_MEIPASS', os.path.dirname(sys.executable))
+        else:
+            base_path = os.path.dirname(os.path.abspath(sys.argv[0]))
         return os.path.join(base_path, relative_path)

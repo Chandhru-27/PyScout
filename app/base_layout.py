@@ -1,18 +1,13 @@
 from notification import show_reset_warning
 from userstate import UserActivityState
-from pystray import MenuItem as item
 from utilities import Utility
 from app_logger import logger
 from db import Database
-from tkinter import filedialog
 from datetime import datetime 
 import customtkinter as ctk
-from utilities import APP_VERSION
 from PIL import Image
 import threading
-import pystray
 import time
-import sys
 import os
 
 shutdown_event = threading.Event()
@@ -72,8 +67,8 @@ class PyScout(ctk.CTk):
         self.sidebar_frame.pack_propagate(False)
     
         # ==== Logo at the Bottom ====
-        self.logo_source = Image.open(Utility.resource_path("assets/logo.png")) # Development
-        # self.logo_source = Image.open(Utility.resource_path("app/assets/logo.png"))  # Production
+        # self.logo_source = Image.open(Utility.resource_path("app/assets/logo.png")) # Development
+        self.logo_source = Image.open(Utility.resource_path("app/assets/logo.png"))  # Production
         self.logo_ctk_img = ctk.CTkImage(self.logo_source, size=(100, 100))
         self.logo_label = ctk.CTkLabel(self.sidebar_frame, image=self.logo_ctk_img, text="")
         self.logo_label.pack(side="bottom", pady=20)
@@ -96,8 +91,8 @@ class PyScout(ctk.CTk):
         ]
         flag = 0
         for name, icon_file in nav_items:
-            icon_path = Utility.resource_path(f"assets/{nav_images[flag]}") # Development
-            # icon_path = Utility.resource_path(f"app/assets/{nav_images[flag]}") # Production
+            # icon_path = Utility.resource_path(f"assets/{nav_images[flag]}") # Development
+            icon_path = Utility.resource_path(f"app/assets/{nav_images[flag]}") # Production
             icon_img = Image.open(icon_path)
             self._nav_icon_sources[name] = icon_img
             icon = ctk.CTkImage(icon_img, size=(28, 28))
@@ -288,9 +283,9 @@ class PyScout(ctk.CTk):
         
     def show_tray_icon(self):
         global tray_icon
-
-        icon_path = Utility.resource_path("assets/icon.ico") # Development
-        # icon_path = Utility.resource_path("app/assets/icon.ico") # Production
+        import pystray
+        # icon_path = Utility.resource_path("assets/icon.ico") # Development
+        icon_path = Utility.resource_path("app/assets/icon.ico") # Production
         icon_image = Image.open(icon_path)
 
         def _on_show(icon, item):
@@ -299,7 +294,7 @@ class PyScout(ctk.CTk):
 
         def _on_exit(icon, item):
             threading.Thread(target=self.graceful_shutdown, daemon=True).start()
-
+        from pystray import MenuItem as item
         menu = pystray.Menu(
             item("Show", _on_show),
             item("Exit", _on_exit)
@@ -813,6 +808,7 @@ class PyScout(ctk.CTk):
 
         def add_app_db():
             """adds blocked apps to the database."""
+            from tkinter import filedialog
             file_path = filedialog.askopenfilename(filetypes=[("Executable Files", "*.exe")])
             if file_path:
                 exe_name = os.path.basename(file_path)
@@ -826,6 +822,7 @@ class PyScout(ctk.CTk):
 
         def add_block_notification_app_db():
             """Creates the textbox popup to add app without notification."""
+            from tkinter import filedialog
             file_path = filedialog.askopenfilename(filetypes=[("Executable Files", "*.exe")])
             if file_path:
                 exe_name = os.path.basename(file_path)
@@ -881,6 +878,7 @@ class PyScout(ctk.CTk):
         refresh_blocked()
 
     def load_settings_page(self):
+            from utilities import APP_VERSION
             """Load the settings page with options to set reminder threshold and pomodoro settings."""
             for widget in self.main_frame.winfo_children():
                 widget.destroy()

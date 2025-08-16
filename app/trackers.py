@@ -3,7 +3,7 @@ from utilities import shutdown_event
 import notification
 from utilities import Utility
 from app_logger import logger
-from datetime import datetime , timedelta
+from datetime import datetime
 import keywords
 import db
 
