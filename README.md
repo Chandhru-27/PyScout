@@ -82,3 +82,4 @@ PyScout is under active development. License details will be added in a future r
 ---
 
 **Author:** Chandhru Loganathan
+
