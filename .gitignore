@@ -67,6 +67,9 @@ dist/
 # config/
 # settings/
 
+run.py
+build.py
+
 # Temporary files
 *.tmp
 *.temp
