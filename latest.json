@@ -1,6 +1,7 @@
 {
-   "app_version": "1.0.2",
+   "app_version": "1.0.3",
    "phase" : "testing",
    "update_manifest_url": "https://github.com/Chandhru-241801035/Project-Testing/releases/download/Latest/PyScout.exe"
 }
+
 
