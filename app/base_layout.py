@@ -68,7 +68,7 @@ class PyScout(ctk.CTk):
     
         # ==== Logo at the Bottom ====
         # self.logo_source = Image.open(Utility.resource_path("app/assets/logo.png")) # Development
-        self.logo_source = Image.open(Utility.resource_path("app/assets/logo.png"))  # Production
+        self.logo_source = Image.open(Utility.resource_path("assets/logo.png"))  # Production
         self.logo_ctk_img = ctk.CTkImage(self.logo_source, size=(100, 100))
         self.logo_label = ctk.CTkLabel(self.sidebar_frame, image=self.logo_ctk_img, text="")
         self.logo_label.pack(side="bottom", pady=20)
@@ -92,7 +92,7 @@ class PyScout(ctk.CTk):
         flag = 0
         for name, icon_file in nav_items:
             # icon_path = Utility.resource_path(f"assets/{nav_images[flag]}") # Development
-            icon_path = Utility.resource_path(f"app/assets/{nav_images[flag]}") # Production
+            icon_path = Utility.resource_path(f"assets/{nav_images[flag]}") # Production
             icon_img = Image.open(icon_path)
             self._nav_icon_sources[name] = icon_img
             icon = ctk.CTkImage(icon_img, size=(28, 28))
@@ -285,7 +285,7 @@ class PyScout(ctk.CTk):
         global tray_icon
         import pystray
         # icon_path = Utility.resource_path("assets/icon.ico") # Development
-        icon_path = Utility.resource_path("app/assets/icon.ico") # Production
+        icon_path = Utility.resource_path("assets/icon.ico") # Production
         icon_image = Image.open(icon_path)
 
         def _on_show(icon, item):
@@ -1067,7 +1067,7 @@ class PyScout(ctk.CTk):
             def on_break_radio_change(selected):
                 if selected == "Standard":
                     self.user_state.break_setting_name = selected
-                    self.user_state.break_threshold = 5 * 60  
+                    self.user_state.break_threshold = 5* 60  
                     db.insert_break_setting(selected, self.user_state.break_threshold)
                     self.load_settings_page()
                 elif selected == "Custom":

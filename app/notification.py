@@ -22,7 +22,7 @@ def notify(state):
         title="PyScout - Reminder",
         msg=notification_msg,
         # icon = Utility.resource_path("assets/icon.ico"), # Development
-        icon=Utility.resource_path("app/assets/icon.ico"), # Production
+        icon=Utility.resource_path("assets/icon.ico"), # Production
         duration='short'
     )
     toast.set_audio(audio.Reminder, loop=False)
@@ -102,7 +102,7 @@ def notify_paused(state):
                 title="PyScout - Reminder",
                 msg="[WARNING]: PyScout is paused. Resume to continue tracking.",
                 # icon=Utility.resource_path("assets/icon.ico"), # Development
-                icon=Utility.resource_path("app/assets/icon.ico"), # Production
+                icon=Utility.resource_path("assets/icon.ico"), # Production
                 duration='short'
             )
         toast.set_audio(audio.Reminder, loop=False)

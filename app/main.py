@@ -151,7 +151,7 @@ def main():
         app.title("PyScout")
         app.minsize(900,700)
         # img_path = Utility.resource_path("assets/icon.ico") # Development
-        img_path = Utility.resource_path("app/assets/icon.ico") # Production
+        img_path = Utility.resource_path("assets/icon.ico") # Production
         app.iconbitmap(default=img_path)
         logger.info("Application started successfully")
         app.mainloop()
@@ -165,6 +165,6 @@ def main():
         logger.info("Application shutting down")
     
 if __name__ == "__main__":
-    Utility.add_to_startup()
+    # Utility.add_to_startup() 
     run_silent_updates()
     main()
